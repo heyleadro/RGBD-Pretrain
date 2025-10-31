@@ -61,10 +61,12 @@ class ReaderImageFolder(Reader):
     def __init__(
             self,
             root,
+            depth_root,
             class_map=''):
         super().__init__()
 
         self.root = root
+        self.depth_root = depth_root
         class_to_idx = None
         if class_map:
             class_to_idx = load_class_map(class_map, root)
@@ -76,11 +78,10 @@ class ReaderImageFolder(Reader):
 
     def __getitem__(self, index):
         path, target = self.samples[index]
-        # print(path)
         if 'train' in path:
-            depth_path='datasets/Depth_ImageNet/train/'+path.split('/')[-2]+'/'+path.split('/')[-1].replace('.JPEG','_depth.jpg') 
+            depth_path= self.depth_root + '/train/' +path.split('/')[-2]+'/'+path.split('/')[-1].replace('.JPEG','_depth.jpg') 
         else:
-            depth_path='datasets/Depth_ImageNet/val/'+path.split('/')[-2]+'/'+path.split('/')[-1].replace('.JPEG','_depth.jpg') 
+            depth_path= self.depth_root + '/val/' +path.split('/')[-2]+'/'+path.split('/')[-1].replace('.JPEG','_depth.jpg') 
         return open(path, 'rb'), target, depth_path
 
     def __len__(self):

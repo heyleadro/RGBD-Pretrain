@@ -27,6 +27,7 @@ class ImageDataset(data.Dataset):
     def __init__(
             self,
             root,
+            depth_root,
             reader=None,
             split='train',
             class_map=None,
@@ -37,9 +38,8 @@ class ImageDataset(data.Dataset):
     ):
         if reader is None or isinstance(reader, str):
             reader = create_reader(
-                reader or '',
                 root=root,
-                split=split,
+                depth_root=depth_root,
                 class_map=class_map
             )
         self.reader = reader
@@ -85,6 +85,8 @@ class ImageDataset(data.Dataset):
         elif self.target_transform is not None:
             target = self.target_transform(target)
 
+        print(img.width,img.height)
+        print(depth_img.width, depth_img.height)
         return np.concatenate((img, np.expand_dims(depth_img,axis=0)),axis=0), target
 
     def __len__(self):
