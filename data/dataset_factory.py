@@ -103,6 +103,7 @@ def create_dataset(
     Returns:
         Dataset object
     """
-    
+    root = _search_split(root, split)
+    depth_root = _search_split(depth_root, split)
     return ImageDataset(root, depth_root, reader=name,split=split, class_map=class_map, load_bytes=load_bytes, **kwargs)
     

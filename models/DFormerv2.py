@@ -16,8 +16,8 @@ import torch.utils.checkpoint as checkpoint
 import math
 from timm.models.layers import DropPath, trunc_normal_
 from typing import List
-from mmengine.runner.checkpoint import load_state_dict
-from mmengine.runner.checkpoint import load_checkpoint
+# from mmengine.runner.checkpoint import load_state_dict
+# from mmengine.runner.checkpoint import load_checkpoint
 from typing import Tuple
 import sys
 import os
@@ -510,8 +510,11 @@ class dformerv2(nn.Module):
         layerscales=[False, False, False, False],
         layer_init_values=1e-6,
         norm_eval=True,
+        num_classes=1000,
+        **kwargs,
     ):
         super().__init__()
+        self.num_classes = num_classes
         self.out_indices = out_indices
         self.num_layers = len(depths)
         self.embed_dim = embed_dims[0]
@@ -554,6 +557,7 @@ class dformerv2(nn.Module):
         for i in range(3):
             self.extra_norms.append(nn.LayerNorm(embed_dims[i + 1]))
 
+        self.pred = nn.Linear(512, num_classes)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -601,7 +605,7 @@ class dformerv2(nn.Module):
                 else:
                     state_dict[k] = v
             print("load " + pretrained)
-            load_state_dict(self, state_dict, strict=False)
+            self.load_state_dict(state_dict, strict=False)
             # load_checkpoint(self, pretrained, strict=False)
             # load_checkpoint(self, pretrained, strict=False, logger=logger)
         elif pretrained is None:
@@ -621,9 +625,8 @@ class dformerv2(nn.Module):
         # rgb input
         x = self.patch_embed(x)
         # depth input
-        x_e = x_e[:, 0, :, :].unsqueeze(1)
-
-        outs = []
+        x_e = x_e.unsqueeze(1)
+        out_final = None
 
         for i in range(self.num_layers):
             layer = self.layers[i]
@@ -632,9 +635,12 @@ class dformerv2(nn.Module):
                 if i != 0:
                     x_out = self.extra_norms[i - 1](x_out)
                 out = x_out.permute(0, 3, 1, 2).contiguous()
-                outs.append(out)
-
-        return tuple(outs)
+                # outs.append(out)
+                out_final = out
+        
+        out_final = out_final.mean([-2, -1])
+        return self.pred(out_final)
+        # return tuple(outs)
 
     def train(self, mode=True):
         """Convert the model into training mode while keep normalization layer
@@ -646,7 +652,6 @@ class dformerv2(nn.Module):
                 if isinstance(m, nn.BatchNorm2d):
                     m.eval()
 
-
 def DFormerv2_S(pretrained=False, **kwargs):
     model = dformerv2(
         embed_dims=[64, 128, 256, 512],
@@ -656,7 +661,6 @@ def DFormerv2_S(pretrained=False, **kwargs):
         **kwargs,
     )
     return model
-
 
 def DFormerv2_B(pretrained=False, **kwargs):
     model = dformerv2(
@@ -669,7 +673,6 @@ def DFormerv2_B(pretrained=False, **kwargs):
         **kwargs,
     )
     return model
-
 
 def DFormerv2_L(pretrained=False, **kwargs):
     model = dformerv2(

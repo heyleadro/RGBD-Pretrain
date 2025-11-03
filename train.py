@@ -43,6 +43,7 @@ import models
 import torchvision
 # import wandb
 import random
+import models.DFormerv2 as DF2
 
 try:
     from apex import amp
@@ -88,6 +89,8 @@ group = parser.add_argument_group('Dataset parameters')
 # Keep this argument outside of the dataset group because it is positional.
 parser.add_argument('data_dir', metavar='DIR',
                    help='path to dataset')
+parser.add_argument('data_depth_dir', metavar='DIR',
+                    help='path to depth dataset')
 group.add_argument('--dataset', '-d', metavar='NAME', default='',
                     help='dataset type (default: ImageFolder/ImageTar if empty)')
 group.add_argument('--train-split', metavar='NAME', default='train',
@@ -163,7 +166,7 @@ group.add_argument('--no-ddp-bb', action='store_true', default=False,
                    help='Force broadcast buffers for native DDP to off.')
 group.add_argument('--synchronize-step', action='store_true', default=False,
                    help='torch.cuda.synchronize() end of each step')
-group.add_argument("--local_rank", default=0, type=int)
+group.add_argument("--local-rank", default=0, type=int)
 parser.add_argument('--device-modules', default=None, type=str, nargs='+',
                     help="Python imports for device backend modules.")
 # Optimizer parameters
@@ -437,11 +440,8 @@ def main():
 
     # in_chans = 3
 
-    model = create_model(
-        args.model,
+    model = DF2.__dict__[args.model](
         pretrained=args.pretrained,
-        in_chans=in_chans,
-        num_classes=args.num_classes,
         drop_rate=args.drop,
         drop_path_rate=args.drop_path,
         drop_block_rate=args.drop_block,
@@ -583,6 +583,7 @@ def main():
     dataset_train = create_dataset(
         args.dataset,
         root=args.data_dir,
+        depth_root=args.data_depth_dir,
         split=args.train_split,
         is_training=True,
         class_map=args.class_map,
@@ -595,6 +596,7 @@ def main():
     dataset_eval = create_dataset(
         args.dataset,
         root=args.data_dir,
+        depth_root=args.data_depth_dir,
         split=args.val_split,
         is_training=False,
         class_map=args.class_map,
@@ -605,7 +607,8 @@ def main():
     # setup mixup / cutmix
     collate_fn = None
     mixup_fn = None
-    mixup_active = args.mixup > 0 or args.cutmix > 0. or args.cutmix_minmax is not None
+    # mixup_active = args.mixup > 0 or args.cutmix > 0. or args.cutmix_minmax is not None
+    mixup_active = False
     if mixup_active:
         mixup_args = dict(
             mixup_alpha=args.mixup,
@@ -902,7 +905,7 @@ def train_one_epoch(
 
         def _forward():
             with amp_autocast():
-                output = model(input)
+                output = model(input[:,:3,:,:],input[:,3,:,:])
                 loss = loss_fn(output, target)
                 # output, aux_loss = model(input)
                 # loss = loss_fn(output, target) + aux_loss
@@ -1032,7 +1035,7 @@ def validate(
                 input = input.contiguous(memory_format=torch.channels_last)
 
             with amp_autocast():
-                output = model(input)
+                output = model(input[:,:3,:,:],input[:,3,:,:])
                 if isinstance(output, (tuple, list)):
                     output = output[0]
 

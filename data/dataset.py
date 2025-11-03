@@ -85,8 +85,8 @@ class ImageDataset(data.Dataset):
         elif self.target_transform is not None:
             target = self.target_transform(target)
 
-        print(img.width,img.height)
-        print(depth_img.width, depth_img.height)
+        # print(img.width,img.height)
+        # print(depth_img.width, depth_img.height)
         return np.concatenate((img, np.expand_dims(depth_img,axis=0)),axis=0), target
 
     def __len__(self):

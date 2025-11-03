@@ -79,9 +79,9 @@ class ReaderImageFolder(Reader):
     def __getitem__(self, index):
         path, target = self.samples[index]
         if 'train' in path:
-            depth_path= self.depth_root + '/train/' +path.split('/')[-2]+'/'+path.split('/')[-1].replace('.JPEG','_depth.jpg') 
+            depth_path= os.path.join(self.depth_root, path.split('/')[-2], path.split('/')[-1].replace('.JPEG','_depth.jpg')) 
         else:
-            depth_path= self.depth_root + '/val/' +path.split('/')[-2]+'/'+path.split('/')[-1].replace('.JPEG','_depth.jpg') 
+            depth_path= os.path.join(self.depth_root, path.split('/')[-1].replace('.JPEG','_depth.jpg')) 
         return open(path, 'rb'), target, depth_path
 
     def __len__(self):
